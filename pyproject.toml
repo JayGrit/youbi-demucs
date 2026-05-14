@@ -3,8 +3,19 @@ name = "ydbi-demucs"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+  "dora-search>=0.1.12",
+  "einops",
+  "julius>=0.2.3",
+  "lameenc>=1.2",
   "minio>=7.2.0",
   "mysql-connector-python>=9.0.0",
+  "numpy",
+  "omegaconf",
+  "openunmix",
+  "pyyaml",
+  "torch",
+  "torchaudio",
+  "tqdm",
 ]
 
 [project.scripts]

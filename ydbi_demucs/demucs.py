@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .config import DEMUCS_MODEL, DEMUCS_SHIFTS, REPO_ROOT, device_candidates
+from .config import DEMUCS_MODEL, DEMUCS_SHIFTS, demucs_source_candidates, device_candidates
 
 
 def _demucs_shifts() -> int:
@@ -14,13 +14,31 @@ def _demucs_model() -> str:
     return DEMUCS_MODEL
 
 
-def separate_audio(video_file: Path, session: Path) -> tuple[Path, Path]:
-    demucs_path = REPO_ROOT / "submodule" / "demucs"
-    if not demucs_path.exists():
-        raise RuntimeError("Demucs submodule is missing. Run: git submodule update --init --recursive")
-    sys.path.insert(0, str(demucs_path))
+def _load_demucs_api():
+    checked_paths = []
+    for demucs_path in demucs_source_candidates():
+        checked_paths.append(str(demucs_path))
+        if demucs_path.exists():
+            sys.path.insert(0, str(demucs_path))
+            break
 
-    from demucs.api import Separator, save_audio
+    try:
+        from demucs.api import Separator, save_audio
+    except ModuleNotFoundError as exc:
+        if exc.name != "demucs":
+            raise
+        checked = "\n  - ".join(checked_paths)
+        raise RuntimeError(
+            "Demucs is not available. Run: git submodule update --init --recursive\n"
+            "or set YDBI_DEMUCS_REPO to an existing demucs checkout.\n"
+            f"Checked:\n  - {checked}"
+        ) from exc
+
+    return Separator, save_audio
+
+
+def separate_audio(video_file: Path, session: Path) -> tuple[Path, Path]:
+    Separator, save_audio = _load_demucs_api()
 
     media_dir = session / "media"
     vocals_file = media_dir / "audio_vocals.wav"

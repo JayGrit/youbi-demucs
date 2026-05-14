@@ -26,7 +26,9 @@ MINIO_PUBLIC_BASE = "/minio"
 MINIO_FULL_BASE_URL = "https://120.53.92.66/minio"
 MINIO_SECURE = False
 
-REPO_ROOT = Path("/Users/hoshuuch/Money/YouDub-webui").expanduser()
+SERVICE_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(os.environ.get("YDBI_REPO_ROOT", SERVICE_ROOT)).expanduser()
+DEMUCS_REPO = os.environ.get("YDBI_DEMUCS_REPO")
 
 DEVICE = "auto"
 DEMUCS_MODEL = "htdemucs_ft"
@@ -66,3 +68,14 @@ def task_work_dir(task_id: str) -> Path:
     path = WORK_DIR / task_id
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def demucs_source_candidates() -> list[Path]:
+    candidates: list[Path] = []
+    if DEMUCS_REPO:
+        candidates.append(Path(DEMUCS_REPO).expanduser())
+    candidates.append(REPO_ROOT / "submodule" / "demucs")
+    legacy_repo_root = Path("/Users/hoshuuch/Money/YouDub-webui").expanduser()
+    if legacy_repo_root != REPO_ROOT:
+        candidates.append(legacy_repo_root / "submodule" / "demucs")
+    return candidates
