@@ -13,8 +13,9 @@ MYSQL_CONFIG = {
     "database": "youbi",
 }
 
-WORKFOLDER = Path("/Users/hoshuuch/Money/YouBi/workfolder").expanduser()
-WORK_DIR = Path(os.environ.get("YDBI_DEMUCS_WORK_DIR", Path(tempfile.gettempdir()) / "ydbi" / "demucs")).expanduser()
+WORK_ROOT = Path(os.environ.get("YDBI_WORK_DIR", Path(tempfile.gettempdir()) / "ydbi")).expanduser()
+WORKFOLDER = WORK_ROOT
+WORK_DIR = Path(os.environ.get("YDBI_DEMUCS_WORK_DIR", WORK_ROOT / "demucs")).expanduser()
 POLL_INTERVAL_SECONDS = 10
 
 STORAGE_BACKEND = "minio"
