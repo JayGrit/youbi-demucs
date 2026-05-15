@@ -46,6 +46,16 @@ def _operator_value() -> str:
     return os.environ.get("DEVICE", "").strip() or "Macbook Air M4"
 
 
+def _stage_running_timeout_seconds() -> int:
+    value = os.environ.get("YDBI_STAGE_RUNNING_TIMEOUT_SECONDS", "").strip()
+    if not value:
+        return 14400
+    try:
+        return max(1, int(value))
+    except ValueError:
+        return 14400
+
+
 def current_operator() -> str:
     return _operator_value()
 
@@ -209,6 +219,32 @@ def mark_running(stage_name: str, task_id: str) -> bool:
             )
         conn.commit()
         return stage_updated
+
+
+def recycle_stale_running(stage_name: str) -> int:
+    stage = stage_for(stage_name)
+    timeout_seconds = _stage_running_timeout_seconds()
+    message = f"{stage_name} task timed out after {timeout_seconds}s; retrying"
+    with connect() as conn:
+        cur = conn.cursor()
+        _ensure_operator_columns(cur, (stage.table,))
+        cur.execute(
+            f"""
+            UPDATE {stage.table}
+            SET status = %s,
+                started_at = NULL,
+                completed_at = NULL,
+                error_message = %s,
+                `operator` = NULL
+            WHERE status = %s
+              AND started_at IS NOT NULL
+              AND TIMESTAMPDIFF(SECOND, started_at, NOW()) > %s
+            """,
+            (READY, message, RUNNING, timeout_seconds),
+        )
+        recycled = cur.rowcount
+        conn.commit()
+        return int(recycled)
 
 
 def _update_stage_fields(stage_name: str, task_id: str, fields: Mapping[str, Any]) -> None:

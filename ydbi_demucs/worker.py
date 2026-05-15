@@ -39,6 +39,9 @@ def run_polling_worker(stage_name: str, handler: Handler) -> None:
     while True:
         try:
             db.record_service_poll(stage_name)
+            recycled = db.recycle_stale_running(stage_name)
+            if recycled:
+                log.warning("%s recycled %d stale running task(s)", stage_name, recycled)
             row = db.find_ready(stage_name)
         except Exception:
             log.exception("%s failed to poll database; retrying in %ss", stage_name, POLL_INTERVAL_SECONDS)
