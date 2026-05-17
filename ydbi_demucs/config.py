@@ -31,9 +31,27 @@ SERVICE_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(os.environ.get("YDBI_REPO_ROOT", SERVICE_ROOT)).expanduser()
 DEMUCS_REPO = os.environ.get("YDBI_DEMUCS_REPO")
 
-DEVICE = "auto"
-DEMUCS_MODEL = "htdemucs_ft"
-DEMUCS_SHIFTS = 1
+DEVICE = os.environ.get("YDBI_DEMUCS_DEVICE", "auto")
+DEMUCS_MODEL = os.environ.get("YDBI_DEMUCS_MODEL", "htdemucs_ft")
+DEMUCS_SHIFTS = int(os.environ.get("YDBI_DEMUCS_SHIFTS", "1"))
+DEMUCS_SEGMENT = os.environ.get("YDBI_DEMUCS_SEGMENT")
+DEMUCS_JOBS = int(os.environ.get("YDBI_DEMUCS_JOBS", "0"))
+
+DEMUCS_LONG_AUDIO_SECONDS = float(os.environ.get("YDBI_DEMUCS_LONG_AUDIO_SECONDS", "1800"))
+DEMUCS_LONG_AUDIO_MODEL = os.environ.get("YDBI_DEMUCS_LONG_AUDIO_MODEL", "htdemucs")
+DEMUCS_LONG_AUDIO_SHIFTS = int(os.environ.get("YDBI_DEMUCS_LONG_AUDIO_SHIFTS", "0"))
+DEMUCS_LONG_AUDIO_SEGMENT = os.environ.get("YDBI_DEMUCS_LONG_AUDIO_SEGMENT", "10")
+DEMUCS_LONG_AUDIO_JOBS = int(os.environ.get("YDBI_DEMUCS_LONG_AUDIO_JOBS", "0"))
+
+
+def _optional_float(value: str | None) -> float | None:
+    if value is None or not value.strip():
+        return None
+    return float(value)
+
+
+DEMUCS_SEGMENT_SECONDS = _optional_float(DEMUCS_SEGMENT)
+DEMUCS_LONG_AUDIO_SEGMENT_SECONDS = _optional_float(DEMUCS_LONG_AUDIO_SEGMENT)
 
 
 def device() -> str:
