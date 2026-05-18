@@ -126,6 +126,42 @@ def _load_demucs_api():
     return Separator, save_audio
 
 
+def _max_model_segment_seconds(model: object) -> float | None:
+    max_allowed_segment = getattr(model, "max_allowed_segment", None)
+    if max_allowed_segment is not None:
+        try:
+            value = float(max_allowed_segment)
+            return value if value != float("inf") else None
+        except (TypeError, ValueError):
+            pass
+
+    segment = getattr(model, "segment", None)
+    if segment is None:
+        return None
+    try:
+        return float(segment)
+    except (TypeError, ValueError):
+        return None
+
+
+def _clamp_segment_to_model(separator: object, requested_segment: float | None) -> float | None:
+    if requested_segment is None:
+        return None
+
+    max_segment = _max_model_segment_seconds(separator.model)
+    if max_segment is None or requested_segment <= max_segment:
+        return requested_segment
+
+    log.warning(
+        "demucs segment %.3fs exceeds model limit %.3fs; using %.3fs",
+        requested_segment,
+        max_segment,
+        max_segment,
+    )
+    separator.update_parameter(segment=max_segment)
+    return max_segment
+
+
 def separate_audio(video_file: Path, session: Path) -> tuple[Path, Path]:
     Separator, save_audio = _load_demucs_api()
     runtime = _runtime_for(video_file)
@@ -157,6 +193,7 @@ def separate_audio(video_file: Path, session: Path) -> tuple[Path, Path]:
                 segment=runtime.segment,
                 jobs=runtime.jobs,
             )
+            _clamp_segment_to_model(separator, runtime.segment)
             mix, separated = separator.separate_audio_file(str(video_file))
             break
         except Exception as exc:
