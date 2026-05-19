@@ -121,7 +121,7 @@ def _load_demucs_api():
         checked = "\n  - ".join(checked_paths)
         raise RuntimeError(
             "Demucs is not available. Run: git submodule update --init --recursive\n"
-            "or set YDBI_DEMUCS_REPO to an existing demucs checkout.\n"
+            "or configure DEMUCS_REPO to an existing demucs checkout.\n"
             f"Checked:\n  - {checked}"
         ) from exc
 

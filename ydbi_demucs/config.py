@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import tempfile
 from pathlib import Path
 
@@ -13,9 +12,9 @@ MYSQL_CONFIG = {
     "database": "youbi",
 }
 
-WORK_ROOT = Path(os.environ.get("YDBI_WORK_DIR", Path(tempfile.gettempdir()) / "ydbi")).expanduser()
+WORK_ROOT = Path(tempfile.gettempdir()) / "ydbi"
 WORKFOLDER = WORK_ROOT
-WORK_DIR = Path(os.environ.get("YDBI_DEMUCS_WORK_DIR", WORK_ROOT / "demucs")).expanduser()
+WORK_DIR = WORK_ROOT / "demucs"
 POLL_INTERVAL_SECONDS = 10
 
 STORAGE_BACKEND = "minio"
@@ -28,23 +27,21 @@ MINIO_FULL_BASE_URL = "https://120.53.92.66/minio"
 MINIO_SECURE = False
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = Path(os.environ.get("YDBI_REPO_ROOT", SERVICE_ROOT)).expanduser()
-DEMUCS_REPO = os.environ.get("YDBI_DEMUCS_REPO")
+REPO_ROOT = SERVICE_ROOT
+DEMUCS_REPO = None
 
-DEVICE = os.environ.get("YDBI_DEMUCS_DEVICE", "auto")
-DEMUCS_MODEL = os.environ.get("YDBI_DEMUCS_MODEL", "htdemucs_ft")
-DEMUCS_SHIFTS = int(os.environ.get("YDBI_DEMUCS_SHIFTS", "1"))
-DEMUCS_SEGMENT = os.environ.get("YDBI_DEMUCS_SEGMENT")
-DEMUCS_JOBS = int(os.environ.get("YDBI_DEMUCS_JOBS", "0"))
+DEVICE = "auto"
+DEMUCS_MODEL = "htdemucs_ft"
+DEMUCS_SHIFTS = 1
+DEMUCS_SEGMENT = None
+DEMUCS_JOBS = 0
 
-DEMUCS_LONG_AUDIO_SECONDS = float(os.environ.get("YDBI_DEMUCS_LONG_AUDIO_SECONDS", "1800"))
-DEMUCS_LONG_AUDIO_MODEL = os.environ.get("YDBI_DEMUCS_LONG_AUDIO_MODEL", "htdemucs")
-DEMUCS_LONG_AUDIO_SHIFTS = int(os.environ.get("YDBI_DEMUCS_LONG_AUDIO_SHIFTS", "0"))
-DEMUCS_LONG_AUDIO_SEGMENT = os.environ.get("YDBI_DEMUCS_LONG_AUDIO_SEGMENT", "10")
-DEMUCS_LONG_AUDIO_JOBS = int(os.environ.get("YDBI_DEMUCS_LONG_AUDIO_JOBS", "0"))
-DEMUCS_LONG_AUDIO_CHUNK_SECONDS = float(
-    os.environ.get("YDBI_DEMUCS_LONG_AUDIO_CHUNK_SECONDS", "600")
-)
+DEMUCS_LONG_AUDIO_SECONDS = 1800.0
+DEMUCS_LONG_AUDIO_MODEL = "htdemucs"
+DEMUCS_LONG_AUDIO_SHIFTS = 0
+DEMUCS_LONG_AUDIO_SEGMENT = "10"
+DEMUCS_LONG_AUDIO_JOBS = 0
+DEMUCS_LONG_AUDIO_CHUNK_SECONDS = 600.0
 
 
 def _optional_float(value: str | None) -> float | None:
