@@ -42,6 +42,9 @@ DEMUCS_LONG_AUDIO_MODEL = os.environ.get("YDBI_DEMUCS_LONG_AUDIO_MODEL", "htdemu
 DEMUCS_LONG_AUDIO_SHIFTS = int(os.environ.get("YDBI_DEMUCS_LONG_AUDIO_SHIFTS", "0"))
 DEMUCS_LONG_AUDIO_SEGMENT = os.environ.get("YDBI_DEMUCS_LONG_AUDIO_SEGMENT", "10")
 DEMUCS_LONG_AUDIO_JOBS = int(os.environ.get("YDBI_DEMUCS_LONG_AUDIO_JOBS", "0"))
+DEMUCS_LONG_AUDIO_CHUNK_SECONDS = float(
+    os.environ.get("YDBI_DEMUCS_LONG_AUDIO_CHUNK_SECONDS", "600")
+)
 
 
 def _optional_float(value: str | None) -> float | None:
