@@ -15,6 +15,7 @@ HEARTBEAT_TABLE = "yd_service_heartbeat"
 HEARTBEAT_DEVICE_COLUMNS = ("Macbook Air M4", "Macmini M2", "LPXB", "MY_HP", "LPXB_HP", "TXY")
 OPERATOR_COLUMN = "operator"
 OPERATOR_COLUMN_DEFINITION = "VARCHAR(128) NULL"
+STAGE_RUNNING_TIMEOUT_SECONDS = 2 * 60 * 60
 _heartbeat_schema_ready = False
 
 
@@ -44,16 +45,6 @@ def _heartbeat_device_column() -> str | None:
 
 def _operator_value() -> str:
     return os.environ.get("DEVICE", "").strip() or "Macbook Air M4"
-
-
-def _stage_running_timeout_seconds() -> int:
-    value = os.environ.get("YDBI_STAGE_RUNNING_TIMEOUT_SECONDS", "").strip()
-    if not value:
-        return 14400
-    try:
-        return max(1, int(value))
-    except ValueError:
-        return 14400
 
 
 def current_operator() -> str:
@@ -223,7 +214,7 @@ def mark_running(stage_name: str, task_id: str) -> bool:
 
 def recycle_stale_running(stage_name: str) -> int:
     stage = stage_for(stage_name)
-    timeout_seconds = _stage_running_timeout_seconds()
+    timeout_seconds = STAGE_RUNNING_TIMEOUT_SECONDS
     message = f"{stage_name} task timed out after {timeout_seconds}s; retrying"
     with connect() as conn:
         cur = conn.cursor()
