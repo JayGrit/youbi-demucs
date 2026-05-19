@@ -172,7 +172,15 @@ def find_ready(stage_name: str) -> dict[str, Any] | None:
     with connect() as conn:
         cur = _dict_cursor(conn)
         cur.execute(
-            f"SELECT * FROM {stage.table} WHERE status = %s ORDER BY task_id ASC LIMIT 1",
+            f"""
+            SELECT s.*
+            FROM {stage.table} s
+            JOIN yd_task t ON t.id = s.task_id
+            WHERE s.status = %s
+              AND t.status <> 'failed'
+            ORDER BY s.task_id ASC
+            LIMIT 1
+            """,
             (READY,),
         )
         return video_info.merge_into(cur.fetchone())
@@ -192,8 +200,12 @@ def mark_running(stage_name: str, task_id: str) -> bool:
                 error_message = NULL,
                 `operator` = %s
             WHERE task_id = %s AND status = %s
+              AND EXISTS (
+                  SELECT 1 FROM yd_task t
+                  WHERE t.id = %s AND t.status <> 'failed'
+              )
             """,
-            (RUNNING, operator, task_id, READY),
+            (RUNNING, operator, task_id, READY, task_id),
         )
         stage_updated = cur.rowcount == 1
         if stage_updated:
@@ -284,6 +296,11 @@ def mark_success(stage_name: str, task_id: str, outputs: Mapping[str, Any] | Non
 
     with connect() as conn:
         cur = conn.cursor()
+        cur.execute("SELECT status FROM yd_task WHERE id = %s", (task_id,))
+        task_row = cur.fetchone()
+        if not task_row or task_row[0] == "failed":
+            conn.commit()
+            return
         video_info.upsert(task_id, fields, cur)
         cur.execute(
             f"UPDATE {stage.table} SET {', '.join(assignments)} WHERE task_id = %s",
