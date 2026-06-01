@@ -299,8 +299,9 @@ def _separate_long_audio(
 def separate_audio(video_file: Path, session: Path) -> tuple[Path, Path]:
     Separator, save_audio = _load_demucs_api()
     runtime = _runtime_for(video_file)
+    candidate_devices = device_candidates()
     log.info(
-        "demucs runtime audio=%s duration_seconds=%s long_audio=%s model=%s shifts=%s segment=%s jobs=%s",
+        "demucs runtime audio=%s duration_seconds=%s long_audio=%s model=%s shifts=%s segment=%s jobs=%s device_candidates=%s",
         video_file,
         runtime.duration_seconds,
         runtime.long_audio,
@@ -308,6 +309,7 @@ def separate_audio(video_file: Path, session: Path) -> tuple[Path, Path]:
         runtime.shifts,
         runtime.segment,
         runtime.jobs,
+        ",".join(candidate_devices),
     )
 
     media_dir = session / "media"
@@ -318,8 +320,9 @@ def separate_audio(video_file: Path, session: Path) -> tuple[Path, Path]:
         return vocals_file, bgm_file
 
     last_error: Exception | None = None
-    for runtime_device in device_candidates():
+    for runtime_device in candidate_devices:
         try:
+            log.info("demucs trying device=%s model=%s audio=%s", runtime_device, runtime.model, video_file)
             separator = Separator(
                 model=runtime.model,
                 device=runtime_device,
@@ -346,6 +349,7 @@ def separate_audio(video_file: Path, session: Path) -> tuple[Path, Path]:
             break
         except Exception as exc:
             last_error = exc
+            log.warning("demucs failed on device=%s; trying next fallback if available: %s", runtime_device, exc)
             _release_torch_cache()
             if runtime_device == "cpu":
                 raise
