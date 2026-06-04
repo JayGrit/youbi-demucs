@@ -52,75 +52,11 @@ def current_operator() -> str:
 
 
 def _ensure_operator_columns(cur, tables: tuple[str, ...]) -> None:
-    for table in tables:
-        cur.execute(
-            """
-            SELECT COUNT(*)
-            FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s
-            """,
-            (table,),
-        )
-        if _first_column(cur.fetchone()) == 0:
-            continue
-
-        cur.execute(
-            """
-            SELECT COUNT(*)
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s
-            """,
-            (table, OPERATOR_COLUMN),
-        )
-        if _first_column(cur.fetchone()) > 0:
-            continue
-
-        try:
-            cur.execute(
-                f"ALTER TABLE {_quote_identifier(table)} "
-                f"ADD COLUMN {_quote_identifier(OPERATOR_COLUMN)} {OPERATOR_COLUMN_DEFINITION}"
-            )
-        except mysql.connector.Error as exc:
-            if getattr(exc, "errno", None) != 1060:
-                raise
+    return
 
 
 def ensure_service_heartbeat_schema() -> None:
     global _heartbeat_schema_ready
-    if _heartbeat_schema_ready:
-        return
-
-    columns_sql = ",\n                ".join(
-        f"{_quote_identifier(column)} DATETIME NULL" for column in HEARTBEAT_DEVICE_COLUMNS
-    )
-    with connect() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {HEARTBEAT_TABLE} (
-                service_name VARCHAR(64) NOT NULL PRIMARY KEY,
-                {columns_sql},
-                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            )
-            """
-        )
-        cur.execute(
-            """
-            SELECT COLUMN_NAME
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s
-            """,
-            (HEARTBEAT_TABLE,),
-        )
-        existing = {_first_column(row) for row in cur.fetchall()}
-        for column in HEARTBEAT_DEVICE_COLUMNS:
-            if column not in existing:
-                try:
-                    cur.execute(f"ALTER TABLE {HEARTBEAT_TABLE} ADD COLUMN {_quote_identifier(column)} DATETIME NULL")
-                except mysql.connector.Error as exc:
-                    if getattr(exc, "errno", None) != 1060:
-                        raise
-        conn.commit()
     _heartbeat_schema_ready = True
 
 

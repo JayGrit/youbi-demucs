@@ -52,70 +52,12 @@ def _connect():
 
 def _ensure_schema_with_cursor(cur) -> None:
     global _schema_ready
-    if _schema_ready:
-        return
-    cur.execute(
-        f"""
-        CREATE TABLE IF NOT EXISTS {TABLE} (
-          task_id VARCHAR(64) NOT NULL PRIMARY KEY,
-          source_url TEXT,
-          source_platform VARCHAR(32),
-          need_separation TINYINT(1),
-          title VARCHAR(512),
-          session_path TEXT,
-          metadata_path TEXT,
-          metadata_url TEXT,
-          video_source_path TEXT,
-          video_source_url TEXT,
-          audio_source_path TEXT,
-          audio_source_url TEXT,
-          audio_vocals_path TEXT,
-          audio_vocals_url TEXT,
-          audio_bgm_path TEXT,
-          audio_bgm_url TEXT,
-          asr_json_path TEXT,
-          translation_json_path TEXT,
-          target_language VARCHAR(16),
-          vocals_segments_dir TEXT,
-          tts_segments_dir TEXT,
-          audio_dubbing_path TEXT,
-          audio_dubbing_url TEXT,
-          timings_json_path TEXT,
-          final_video_path TEXT,
-          final_video_url TEXT,
-          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )
-        """
-    )
-    cur.execute(
-        """
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE() AND table_name = %s
-        """,
-        (TABLE,),
-    )
-    existing = {_row_value(row) for row in cur.fetchall()}
-    for name, definition in COLUMNS.items():
-        if name in existing:
-            continue
-        try:
-            cur.execute(f"ALTER TABLE {TABLE} ADD COLUMN {name} {definition}")
-        except mysql.connector.Error as exc:
-            if getattr(exc, "errno", None) != 1060:
-                raise
     _schema_ready = True
 
 
 def ensure_schema() -> None:
     global _schema_ready
-    if _schema_ready:
-        return
-    with _connect() as conn:
-        cur = conn.cursor()
-        _ensure_schema_with_cursor(cur)
-        conn.commit()
+    _schema_ready = True
 
 
 def upsert(task_id: str, fields: Mapping[str, Any], cur=None) -> None:
