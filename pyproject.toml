@@ -21,6 +21,9 @@ dependencies = [
 [project.scripts]
 ydbi-demucs = "ydbi_demucs.main:main"
 
+[tool.setuptools]
+packages = ["ydbi_demucs"]
+
 [build-system]
 requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
