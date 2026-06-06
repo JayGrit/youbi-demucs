@@ -12,6 +12,16 @@ from .config import MYSQL_CONFIG
 from .stages import FAILED, READY, RUNNING, SUCCESS, stage_for
 
 HEARTBEAT_TABLE = "yd_service_heartbeat"
+SUBMISSION_TABLE = "downloader_submission"
+UPLOADER_ACCOUNT_TABLE = "uploader_account"
+UPLOAD_SUBMISSION_TABLES = (
+    "uploader_task_bilibili",
+    "uploader_task_douyin",
+    "uploader_task_xiaohongshu",
+    "uploader_task_shipinhao",
+    "uploader_task_kuaishou",
+    "uploader_task_jinritoutiao",
+)
 HEARTBEAT_DEVICE_COLUMNS = ("Macbook Air M4", "Macmini M2", "LPXB", "MY_HP", "LPXB_HP", "TXY")
 OPERATOR_COLUMN = "operator"
 OPERATOR_COLUMN_DEFINITION = "VARCHAR(128) NULL"
@@ -30,6 +40,111 @@ def _dict_cursor(conn):
 
 def _quote_identifier(identifier: str) -> str:
     return f"`{identifier.replace('`', '``')}`"
+
+
+def _staged_row_value(row: Any, index: int = 0) -> Any:
+    if isinstance(row, Mapping):
+        return list(row.values())[index]
+    return row[index]
+
+
+def _staged_table_exists_cur(cur, table: str) -> bool:
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s
+        """,
+        (table,),
+    )
+    row = cur.fetchone()
+    return bool(row and int(_staged_row_value(row)) > 0)
+
+
+def _staged_column_exists_cur(cur, table: str, column: str) -> bool:
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s
+        """,
+        (table, column),
+    )
+    row = cur.fetchone()
+    return bool(row and int(_staged_row_value(row)) > 0)
+
+
+def _ensure_staged_account_columns_cur(cur) -> bool:
+    if not _staged_table_exists_cur(cur, UPLOADER_ACCOUNT_TABLE):
+        return False
+    if not _staged_column_exists_cur(cur, UPLOADER_ACCOUNT_TABLE, "staged_running_count"):
+        cur.execute(
+            f"""
+            ALTER TABLE {UPLOADER_ACCOUNT_TABLE}
+            ADD COLUMN staged_running_count INT NOT NULL DEFAULT 0
+            """
+        )
+    if not _staged_column_exists_cur(cur, UPLOADER_ACCOUNT_TABLE, "staged_failed_count"):
+        cur.execute(
+            f"""
+            ALTER TABLE {UPLOADER_ACCOUNT_TABLE}
+            ADD COLUMN staged_failed_count INT NOT NULL DEFAULT 0
+            """
+        )
+    return True
+
+
+def _task_has_upload_submission_cur(cur, task_id: str, account_key: str) -> bool:
+    if not task_id or not account_key:
+        return False
+    for table in UPLOAD_SUBMISSION_TABLES:
+        if not _staged_table_exists_cur(cur, table):
+            continue
+        cur.execute(
+            f"""
+            SELECT 1
+            FROM {table}
+            WHERE task_id = %s AND account_key = %s
+            LIMIT 1
+            """,
+            (task_id, account_key),
+        )
+        if cur.fetchone():
+            return True
+    return False
+
+
+def _apply_staged_pipeline_failure_cur(cur, task_id: str, old_task_status: str | None) -> None:
+    if str(old_task_status or "").strip().lower() == FAILED:
+        return
+    if not _ensure_staged_account_columns_cur(cur) or not _staged_table_exists_cur(cur, SUBMISSION_TABLE):
+        return
+    cur.execute(
+        f"""
+        SELECT type
+        FROM {SUBMISSION_TABLE}
+        WHERE task_id = %s
+          AND status = %s
+          AND NULLIF(type, '') IS NOT NULL
+        FOR UPDATE
+        """,
+        (task_id, SUCCESS),
+    )
+    row = cur.fetchone()
+    account_key = str(_staged_row_value(row) if row else "").strip()
+    if not account_key or _task_has_upload_submission_cur(cur, task_id, account_key):
+        return
+    cur.execute(
+        f"""
+        UPDATE {UPLOADER_ACCOUNT_TABLE}
+        SET staged_running_count = GREATEST(staged_running_count - 1, 0),
+            staged_failed_count = staged_failed_count + 1,
+            metrics_updated_at = NOW(),
+            updated_at = NOW()
+        WHERE account_key = %s
+        """,
+        (account_key,),
+    )
 
 
 def _first_column(row: Any) -> Any:
@@ -267,6 +382,9 @@ def mark_failed(stage_name: str, task_id: str, message: str) -> None:
     stage = stage_for(stage_name)
     with connect() as conn:
         cur = conn.cursor()
+        cur.execute("SELECT status FROM yd_task WHERE id = %s FOR UPDATE", (task_id,))
+        task_row = cur.fetchone()
+        old_task_status = _staged_row_value(task_row) if task_row else None
         cur.execute(
             f"""
             UPDATE {stage.table}
@@ -283,4 +401,5 @@ def mark_failed(stage_name: str, task_id: str, message: str) -> None:
             """,
             (stage_name, message, task_id),
         )
+        _apply_staged_pipeline_failure_cur(cur, task_id, old_task_status)
         conn.commit()
