@@ -11,9 +11,8 @@ TABLE = "yd_video_info"
 
 COLUMNS: dict[str, str] = {
     "source_url": "TEXT",
-    "source_platform": "VARCHAR(32)",
+    "submitter_video_id": "BIGINT UNSIGNED",
     "need_separation": "TINYINT(1)",
-    "title": "VARCHAR(512)",
     "session_path": "TEXT",
     "metadata_path": "TEXT",
     "metadata_url": "TEXT",
