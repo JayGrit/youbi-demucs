@@ -7,7 +7,7 @@ import mysql.connector
 
 from .config import MYSQL_CONFIG
 
-TABLE = "yd_video_info"
+TABLE = "video_info"
 
 COLUMNS: dict[str, str] = {
     "source_url": "TEXT",

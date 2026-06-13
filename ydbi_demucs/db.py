@@ -11,7 +11,7 @@ from . import video_info
 from .config import MYSQL_CONFIG
 from .stages import FAILED, READY, RUNNING, SUCCESS, stage_for
 
-HEARTBEAT_TABLE = "yd_service_heartbeat"
+HEARTBEAT_TABLE = "service_heartbeat"
 SUBMISSION_TABLE = "downloader_submission"
 UPLOADER_ACCOUNT_TABLE = "uploader_account"
 UPLOAD_SUBMISSION_TABLES = (
@@ -198,7 +198,7 @@ def record_service_poll(stage_name: str) -> None:
 def get_task(task_id: str) -> dict[str, Any] | None:
     with connect() as conn:
         cur = _dict_cursor(conn)
-        cur.execute("SELECT * FROM yd_task WHERE id = %s", (task_id,))
+        cur.execute("SELECT * FROM task WHERE id = %s", (task_id,))
         task = cur.fetchone()
         if not task:
             return None
@@ -209,8 +209,8 @@ def get_task(task_id: str) -> dict[str, Any] | None:
 def downloader_operator_for(task_id: str) -> str | None:
     with connect() as conn:
         cur = _dict_cursor(conn)
-        _ensure_operator_columns(cur, ("yd_downloader",))
-        cur.execute("SELECT `operator` FROM yd_downloader WHERE task_id = %s", (task_id,))
+        _ensure_operator_columns(cur, ("downloader",))
+        cur.execute("SELECT `operator` FROM downloader WHERE task_id = %s", (task_id,))
         row = cur.fetchone()
         if not row:
             return None
@@ -226,7 +226,7 @@ def find_ready(stage_name: str) -> dict[str, Any] | None:
             f"""
             SELECT s.*
             FROM {stage.table} s
-            JOIN yd_task t ON t.id = s.task_id
+            JOIN task t ON t.id = s.task_id
             WHERE s.status = %s
               AND t.status <> 'failed'
             ORDER BY s.task_id ASC
@@ -242,7 +242,7 @@ def mark_running(stage_name: str, task_id: str) -> bool:
     operator = _operator_value()
     with connect() as conn:
         cur = conn.cursor()
-        _ensure_operator_columns(cur, ("yd_task", stage.table))
+        _ensure_operator_columns(cur, ("task", stage.table))
         cur.execute(
             f"""
             UPDATE {stage.table}
@@ -252,7 +252,7 @@ def mark_running(stage_name: str, task_id: str) -> bool:
                 `operator` = %s
             WHERE task_id = %s AND status = %s
               AND EXISTS (
-                  SELECT 1 FROM yd_task t
+                  SELECT 1 FROM task t
                   WHERE t.id = %s AND t.status <> 'failed'
               )
             """,
@@ -262,7 +262,7 @@ def mark_running(stage_name: str, task_id: str) -> bool:
         if stage_updated:
             cur.execute(
                 """
-                UPDATE yd_task
+                UPDATE task
                 SET status = 'running',
                     current_stage = %s,
                     started_at = COALESCE(started_at, NOW()),
@@ -347,7 +347,7 @@ def mark_success(stage_name: str, task_id: str, outputs: Mapping[str, Any] | Non
 
     with connect() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT status FROM yd_task WHERE id = %s", (task_id,))
+        cur.execute("SELECT status FROM task WHERE id = %s", (task_id,))
         task_row = cur.fetchone()
         if not task_row or task_row[0] == "failed":
             conn.commit()
@@ -363,13 +363,13 @@ def mark_success(stage_name: str, task_id: str, outputs: Mapping[str, Any] | Non
                 (READY, task_id),
             )
             cur.execute(
-                "UPDATE yd_task SET current_stage = %s WHERE id = %s",
+                "UPDATE task SET current_stage = %s WHERE id = %s",
                 (stage.next_name, task_id),
             )
         else:
             cur.execute(
                 """
-                UPDATE yd_task
+                UPDATE task
                 SET status = 'success', current_stage = 'done', completed_at = NOW(), error_message = NULL
                 WHERE id = %s
                 """,
@@ -382,7 +382,7 @@ def mark_failed(stage_name: str, task_id: str, message: str) -> None:
     stage = stage_for(stage_name)
     with connect() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT status FROM yd_task WHERE id = %s FOR UPDATE", (task_id,))
+        cur.execute("SELECT status FROM task WHERE id = %s FOR UPDATE", (task_id,))
         task_row = cur.fetchone()
         old_task_status = _staged_row_value(task_row) if task_row else None
         cur.execute(
@@ -395,7 +395,7 @@ def mark_failed(stage_name: str, task_id: str, message: str) -> None:
         )
         cur.execute(
             """
-            UPDATE yd_task
+            UPDATE task
             SET status = 'failed', current_stage = %s, error_message = %s, completed_at = NOW()
             WHERE id = %s
             """,

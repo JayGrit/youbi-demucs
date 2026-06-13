@@ -7,7 +7,7 @@ model loading and GPU/CPU device selection.
 
 ## Input Table
 
-`yd_demucs`
+`demucs`
 
 Required fields:
 
@@ -20,7 +20,7 @@ Required fields:
 - `audio_vocals_path`
 - `audio_bgm_path`
 
-It copies `audio_vocals_path` into `yd_whisper.audio_vocals_path`.
+It copies `audio_vocals_path` into `whisper.audio_vocals_path`.
 
 ## Polling
 
