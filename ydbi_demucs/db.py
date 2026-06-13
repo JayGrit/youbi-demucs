@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
-from pathlib import Path
 from typing import Any
 
 import mysql.connector
@@ -309,29 +308,6 @@ def _update_stage_fields(stage_name: str, task_id: str, fields: Mapping[str, Any
         cur = conn.cursor()
         cur.execute(f"UPDATE {stage.table} SET {assignments} WHERE task_id = %s", values)
         conn.commit()
-
-
-def set_whisper_audio_vocals_path(task_id: str, audio_vocals_path: str) -> None:
-    video_info.upsert(task_id, {"audio_vocals_path": audio_vocals_path})
-
-
-def set_speaker_audio_vocals_path(task_id: str, audio_vocals_path: str) -> None:
-    video_info.upsert(task_id, {"audio_vocals_path": audio_vocals_path})
-
-
-def set_combiner_audio_bgm_path(task_id: str, audio_bgm_path: str) -> None:
-    video_info.upsert(task_id, {"audio_bgm_path": audio_bgm_path})
-
-
-def session_path_for(task_id: str) -> Path:
-    task = get_task(task_id)
-    if not task:
-        raise RuntimeError(f"Task not found: {task_id}")
-    info = task.get("video_info") or {}
-    session_path = info.get("session_path")
-    if not session_path:
-        raise RuntimeError(f"Task missing downloader session_path: {task_id}")
-    return Path(session_path)
 
 
 def mark_success(stage_name: str, task_id: str, outputs: Mapping[str, Any] | None = None) -> None:

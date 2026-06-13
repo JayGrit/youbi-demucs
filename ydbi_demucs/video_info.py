@@ -13,10 +13,7 @@ COLUMNS: dict[str, str] = {
     "source_url": "TEXT",
     "submitter_video_id": "BIGINT UNSIGNED",
     "need_separation": "TINYINT(1)",
-    "session_path": "TEXT",
-    "metadata_path": "TEXT",
     "metadata_url": "TEXT",
-    "video_source_path": "TEXT",
     "video_source_url": "TEXT",
     "audio_source_path": "TEXT",
     "audio_source_url": "TEXT",
@@ -27,12 +24,9 @@ COLUMNS: dict[str, str] = {
     "asr_json_path": "TEXT",
     "translation_json_path": "TEXT",
     "target_language": "VARCHAR(16)",
-    "vocals_segments_dir": "TEXT",
     "tts_segments_dir": "TEXT",
-    "audio_dubbing_path": "TEXT",
     "audio_dubbing_url": "TEXT",
     "timings_json_path": "TEXT",
-    "final_video_path": "TEXT",
     "final_video_url": "TEXT",
 }
 
