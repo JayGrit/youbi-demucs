@@ -241,7 +241,7 @@ def mark_running(stage_name: str, task_id: str) -> bool:
     operator = _operator_value()
     with connect() as conn:
         cur = conn.cursor()
-        _ensure_operator_columns(cur, ("task", stage.table))
+        _ensure_operator_columns(cur, (stage.table,))
         cur.execute(
             f"""
             UPDATE {stage.table}
@@ -264,11 +264,10 @@ def mark_running(stage_name: str, task_id: str) -> bool:
                 UPDATE task
                 SET status = 'running',
                     current_stage = %s,
-                    started_at = COALESCE(started_at, NOW()),
-                    `operator` = %s
+                    started_at = COALESCE(started_at, NOW())
                 WHERE id = %s
                 """,
-                (stage_name, operator, task_id),
+                (stage_name, task_id),
             )
         conn.commit()
         return stage_updated
