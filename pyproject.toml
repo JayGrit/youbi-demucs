@@ -15,6 +15,7 @@ dependencies = [
   "pyyaml",
   "torch",
   "torchaudio",
+  "torchcodec",
   "tqdm",
 ]
 
