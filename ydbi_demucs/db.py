@@ -332,24 +332,6 @@ def mark_success(stage_name: str, task_id: str, outputs: Mapping[str, Any] | Non
             f"UPDATE {stage.table} SET {', '.join(assignments)} WHERE task_id = %s",
             values,
         )
-        if stage.next_table:
-            cur.execute(
-                f"UPDATE {stage.next_table} SET status = %s WHERE task_id = %s AND status = 'pending'",
-                (READY, task_id),
-            )
-            cur.execute(
-                "UPDATE task SET current_stage = %s WHERE id = %s",
-                (stage.next_name, task_id),
-            )
-        else:
-            cur.execute(
-                """
-                UPDATE task
-                SET status = 'success', current_stage = 'done', completed_at = NOW(), error_message = NULL
-                WHERE id = %s
-                """,
-                (task_id,),
-            )
         conn.commit()
 
 
