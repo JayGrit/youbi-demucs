@@ -10,6 +10,7 @@ from pathlib import Path
 from ydbi_demucs.demucs import separate_audio
 
 log = logging.getLogger(__name__)
+DESKTOP_DIR = Path.home() / "Desktop"
 
 
 @dataclass(frozen=True)
@@ -18,24 +19,19 @@ class LocalDemucsResult:
     bgm: Path
 
 
-def separate_local_file(input_file: str | Path, output_dir: str | Path | None = None) -> LocalDemucsResult:
-    """Separate a local audio/video file and keep vocals/background WAV outputs."""
+def separate_local_file(input_file: str | Path) -> LocalDemucsResult:
+    """Separate a local audio/video file and keep vocals/background WAV outputs on Desktop."""
     source = Path(input_file).expanduser().resolve()
     if not source.is_file():
         raise FileNotFoundError(f"input file does not exist: {source}")
 
-    destination = (
-        Path(output_dir).expanduser().resolve()
-        if output_dir is not None
-        else source.with_name(f"{source.stem}_demucs")
-    )
-    destination.mkdir(parents=True, exist_ok=True)
+    DESKTOP_DIR.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="ydbi-demucs-local-") as temp_dir:
         session = Path(temp_dir)
         vocals, bgm = separate_audio(source, session)
-        vocals_output = destination / "audio_vocals.wav"
-        bgm_output = destination / "audio_bgm.wav"
+        vocals_output = DESKTOP_DIR / f"{source.stem}_vocal.wav"
+        bgm_output = DESKTOP_DIR / f"{source.stem}_back.wav"
         shutil.copy2(vocals, vocals_output)
         shutil.copy2(bgm, bgm_output)
 
@@ -44,14 +40,9 @@ def separate_local_file(input_file: str | Path, output_dir: str | Path | None = 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Separate a local audio/video file into vocals and background audio.",
+        description="Separate a local audio/video file into Desktop vocals/background WAV files.",
     )
     parser.add_argument("input_file", help="local input media file, audio or video")
-    parser.add_argument(
-        "-o",
-        "--output-dir",
-        help="output directory, defaults to <input_stem>_demucs next to the input file",
-    )
     parser.add_argument(
         "--log-level",
         default="INFO",
@@ -68,7 +59,7 @@ def main(argv: list[str] | None = None) -> None:
         level=getattr(logging, args.log_level),
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    result = separate_local_file(args.input_file, args.output_dir)
+    result = separate_local_file(args.input_file)
     print(f"vocals: {result.vocals}")
     print(f"bgm: {result.bgm}")
 
