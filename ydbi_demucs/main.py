@@ -8,6 +8,7 @@ from pathlib import Path
 from ydbi_demucs import db
 from ydbi_demucs.config import task_work_dir
 from ydbi_demucs.demucs import separate_audio
+from ydbi_demucs.service import SERVICE_NAME
 from ydbi_demucs.storage import download, upload
 from ydbi_demucs.worker import run_polling_worker
 
@@ -73,7 +74,7 @@ def handle(row: dict) -> dict[str, str]:
 
 
 def main() -> None:
-    run_polling_worker("demucs", handle)
+    run_polling_worker(SERVICE_NAME, handle)
 
 
 if __name__ == "__main__":
