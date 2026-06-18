@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 ydbi-demucs = "ydbi_demucs.main:main"
+ydbi-demucs-local-test = "ydbi_demucs.local_test:main"
 
 [tool.setuptools]
 packages = ["ydbi_demucs"]
