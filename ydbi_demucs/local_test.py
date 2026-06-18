@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from ydbi_demucs.demucs import separate_audio
 
 log = logging.getLogger(__name__)
 DESKTOP_DIR = Path.home() / "Desktop"
+CALLER_PWD_ENV = "YDBI_DEMUCS_CALLER_PWD"
 
 
 @dataclass(frozen=True)
@@ -21,7 +23,10 @@ class LocalDemucsResult:
 
 def separate_local_file(input_file: str | Path) -> LocalDemucsResult:
     """Separate a local audio/video file and keep vocals/background WAV outputs on Desktop."""
-    source = Path(input_file).expanduser().resolve()
+    input_path = Path(input_file).expanduser()
+    if not input_path.is_absolute() and os.environ.get(CALLER_PWD_ENV):
+        input_path = Path(os.environ[CALLER_PWD_ENV]).expanduser() / input_path
+    source = input_path.resolve()
     if not source.is_file():
         raise FileNotFoundError(f"input file does not exist: {source}")
 
