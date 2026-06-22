@@ -330,9 +330,11 @@ def mark_success(stage_name: str, task_id: str, outputs: Mapping[str, Any] | Non
         cur = conn.cursor()
         cur.execute("SELECT status FROM task WHERE id = %s", (task_id,))
         task_row = cur.fetchone()
-        if not task_row or task_row[0] == "failed":
+        if not task_row:
             conn.commit()
             return
+        # Another stage may fail while this stage is still running. Preserve
+        # the task failure, but persist this stage's result and outputs.
         video_info.upsert(task_id, fields, cur)
         cur.execute(
             f"UPDATE {table} SET {', '.join(assignments)} WHERE task_id = %s",
