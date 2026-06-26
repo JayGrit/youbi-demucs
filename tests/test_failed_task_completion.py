@@ -11,7 +11,7 @@ class FailedTaskCompletionTest(unittest.TestCase):
         conn = MagicMock()
         conn.__enter__.return_value = conn
         conn.cursor.return_value.fetchone.return_value = ("failed",)
-        outputs = {"audio_vocals_url": "s3://bucket/vocals.wav"}
+        outputs = {"audio_vocals_url": "http://120.53.92.66:9000/ydbi/vocals.wav"}
 
         with (
             patch.object(db, "connect", return_value=conn),

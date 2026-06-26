@@ -78,31 +78,17 @@ def upload(local_path: Path, object_name: str, content_type: str = "application/
     return object_url(normalized)
 
 
-def _strip_known_prefix(path: str) -> str:
-    path = path.split("?", 1)[0].lstrip("/")
-    for prefix in (f"minio/{MINIO_BUCKET}/", f"{MINIO_BUCKET}/"):
-        if path.startswith(prefix):
-            return path[len(prefix) :]
-    return path
-
-
 def parse_object_ref(ref: str) -> ObjectRef | None:
     value = str(ref or "").strip()
     if not value:
         return None
 
     parsed = urlparse(value)
-    if parsed.scheme == "s3":
-        bucket = parsed.netloc or MINIO_BUCKET
-        object_name = parsed.path.lstrip("/")
-        return ObjectRef(bucket, object_name) if object_name else None
-
-    if parsed.scheme in {"http", "https"}:
-        object_name = _strip_known_prefix(parsed.path)
-        return ObjectRef(MINIO_BUCKET, object_name) if object_name else None
-
-    if value.startswith("/minio/") or value.startswith(f"/{MINIO_BUCKET}/") or value.startswith(f"{MINIO_BUCKET}/"):
-        object_name = _strip_known_prefix(value)
+    if parsed.scheme == "http" and parsed.hostname == "120.53.92.66" and parsed.port == 9000:
+        prefix = f"/{MINIO_BUCKET}/"
+        if not parsed.path.startswith(prefix):
+            return None
+        object_name = parsed.path[len(prefix) :]
         return ObjectRef(MINIO_BUCKET, object_name) if object_name else None
 
     return None
@@ -128,5 +114,5 @@ def download(ref: str | Path, destination: Path) -> Path:
     except S3Error as exc:
         raise FileNotFoundError(
             f"input does not exist locally or in minio: {source}; tried "
-            f"s3://{object_info.bucket}/{object_info.object_name}: {exc.code}"
+            f"{object_url(object_info.object_name, object_info.bucket)}: {exc.code}"
         ) from exc

@@ -23,7 +23,7 @@ MINIO_ACCESS_KEY = "minioadmin"
 MINIO_SECRET_KEY = "minioadmin"
 MINIO_BUCKET = "ydbi"
 MINIO_PUBLIC_BASE = "/minio"
-MINIO_FULL_BASE_URL = "https://120.53.92.66/minio"
+MINIO_FULL_BASE_URL = "http://120.53.92.66:9000"
 MINIO_SECURE = False
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
