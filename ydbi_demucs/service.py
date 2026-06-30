@@ -1,5 +1,5 @@
 SERVICE_NAME = "demucs"
-SERVICE_TABLE = "demucs"
+SERVICE_TABLE = "distributor_task_stages"
 
 PENDING = "pending"
 READY = "ready"
