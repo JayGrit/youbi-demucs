@@ -21,13 +21,19 @@ def _start_task_heartbeat(stage_name: str) -> threading.Event:
         while not stop_event.wait(POLL_INTERVAL_SECONDS):
             try:
                 db.record_service_poll(stage_name)
-            except Exception:
-                log.exception("%s failed to update task heartbeat", stage_name)
+            except Exception as exc:
+                if db.is_mysql_connection_error(exc):
+                    log.warning("%s failed to update task heartbeat: network connection failed", stage_name)
+                else:
+                    log.exception("%s failed to update task heartbeat", stage_name)
 
     try:
         db.record_service_poll(stage_name)
-    except Exception:
-        log.exception("%s failed to update task heartbeat", stage_name)
+    except Exception as exc:
+        if db.is_mysql_connection_error(exc):
+            log.warning("%s failed to update task heartbeat: network connection failed", stage_name)
+        else:
+            log.exception("%s failed to update task heartbeat", stage_name)
     thread = threading.Thread(target=heartbeat_loop, name=f"{stage_name}-heartbeat", daemon=True)
     thread.start()
     return stop_event
@@ -43,8 +49,15 @@ def run_polling_worker(stage_name: str, handler: Handler) -> None:
             if recycled:
                 log.warning("%s recycled %d stale running task(s)", stage_name, recycled)
             row = db.find_ready(stage_name)
-        except Exception:
-            log.exception("%s failed to poll database; retrying in %ss", stage_name, POLL_INTERVAL_SECONDS)
+        except Exception as exc:
+            if db.is_mysql_connection_error(exc):
+                log.warning(
+                    "%s failed to poll database: network connection failed; retrying in %ss",
+                    stage_name,
+                    POLL_INTERVAL_SECONDS,
+                )
+            else:
+                log.exception("%s failed to poll database; retrying in %ss", stage_name, POLL_INTERVAL_SECONDS)
             time.sleep(POLL_INTERVAL_SECONDS)
             continue
         if not row:

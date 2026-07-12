@@ -21,6 +21,20 @@ OPERATOR_COLUMN = "operator"
 OPERATOR_COLUMN_DEFINITION = "VARCHAR(128) NULL"
 STAGE_RUNNING_TIMEOUT_SECONDS = 2 * 60 * 60
 _heartbeat_schema_ready = False
+MYSQL_NETWORK_ERROR_CODES = {2002, 2003, 2005, 2013, 2055}
+
+
+def is_mysql_connection_error(exc: BaseException) -> bool:
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, mysql.connector.Error):
+            if getattr(current, "errno", None) in MYSQL_NETWORK_ERROR_CODES:
+                return True
+            message = str(current).lower()
+            if "can't connect to mysql server" in message or "lost connection to mysql server" in message:
+                return True
+        current = current.__cause__ if current.__cause__ is not None else current.__context__
+    return False
 
 
 def connect():
