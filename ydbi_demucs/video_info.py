@@ -29,9 +29,6 @@ COLUMNS: dict[str, str] = {
     "final_video_url": "TEXT",
 }
 
-_schema_ready = False
-
-
 def _row_value(row: Any, index: int = 0) -> Any:
     if isinstance(row, Mapping):
         return list(row.values())[index]
@@ -42,23 +39,12 @@ def _connect():
     return mysql.connector.connect(**MYSQL_CONFIG)
 
 
-def _ensure_schema_with_cursor(cur) -> None:
-    global _schema_ready
-    _schema_ready = True
-
-
-def ensure_schema() -> None:
-    global _schema_ready
-    _schema_ready = True
-
-
 def upsert(task_id: str, fields: Mapping[str, Any], cur=None) -> None:
     values = {key: value for key, value in fields.items() if key in COLUMNS and value is not None}
     if not values:
         return
 
     def execute(cursor) -> None:
-        _ensure_schema_with_cursor(cursor)
         names = list(values)
         columns = ", ".join(["task_id", *names])
         placeholders = ", ".join(["%s"] * (len(names) + 1))
@@ -73,8 +59,6 @@ def upsert(task_id: str, fields: Mapping[str, Any], cur=None) -> None:
         )
 
     if cur is not None:
-        if not _schema_ready:
-            ensure_schema()
         execute(cur)
         return
 
@@ -85,7 +69,6 @@ def upsert(task_id: str, fields: Mapping[str, Any], cur=None) -> None:
 
 
 def get(task_id: str) -> dict[str, Any] | None:
-    ensure_schema()
     with _connect() as conn:
         cur = conn.cursor(dictionary=True)
         columns = ", ".join(["task_id", *COLUMNS])
