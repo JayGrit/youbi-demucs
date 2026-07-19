@@ -15,7 +15,7 @@ class FailedTaskCompletionTest(unittest.TestCase):
 
         with (
             patch.object(db, "connect", return_value=conn),
-            patch.object(db.video_info, "upsert") as upsert,
+            patch.object(db.task_info, "upsert") as upsert,
         ):
             db.mark_success("demucs", "task-1", outputs)
 
