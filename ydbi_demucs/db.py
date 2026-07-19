@@ -167,11 +167,11 @@ def record_service_poll(stage_name: str) -> None:
 def get_task(task_id: str) -> dict[str, Any] | None:
     with connect() as conn:
         cur = _dict_cursor(conn)
-        cur.execute("SELECT task_id AS id FROM task_info WHERE task_id = %s", (task_id,))
+        cur.execute("SELECT id FROM task WHERE id = %s", (task_id,))
         task = cur.fetchone()
         if not task:
             return None
-        task["task_info"] = task_info.get(task_id)
+        task["task_info"] = task_info.get(task_id, fields={"audio_source_url"})
         return task
 
 
@@ -208,7 +208,7 @@ def find_ready(stage_name: str) -> dict[str, Any] | None:
             """,
             (stage_name, READY),
         )
-        return task_info.merge_into(cur.fetchone())
+        return task_info.merge_into(cur.fetchone(), fields={"audio_source_url"})
 
 
 def mark_running(stage_name: str, task_id: str) -> bool:

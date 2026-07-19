@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 import mysql.connector
@@ -77,6 +77,39 @@ COLUMNS = {
     *TASK_PROCESSING_FIELDS,
     *TASK_METADATA_FIELDS,
     *PRODUCT_PPT_FIELDS,
+}
+FIELD_TABLES = {
+    **{key: "task" for key in TASK_FIELDS},
+    **{key: "task_source" for key in TASK_SOURCE_FIELDS},
+    **{key: "task_options" for key in TASK_OPTIONS_FIELDS},
+    **{key: "task_processing" for key in TASK_PROCESSING_FIELDS},
+    **{key: "task_metadata" for key in TASK_METADATA_FIELDS},
+    **{key: "product_ppt" for key in PRODUCT_PPT_FIELDS},
+    **{key: "submitter_video" for key in SOURCE_METADATA_COLUMNS},
+}
+FIELD_SELECTS = {
+    "submitter_video_id": "t.submitter_video_id",
+    "topic": "t.topic",
+    "task_type": "t.task_type",
+    **{key: f"ts.{key}" for key in TASK_SOURCE_FIELDS},
+    **{key: f"opts.{key}" for key in TASK_OPTIONS_FIELDS},
+    **{key: f"proc.{key}" for key in TASK_PROCESSING_FIELDS},
+    **{key: f"meta.{key}" for key in TASK_METADATA_FIELDS},
+    **{key: f"ppt.{key}" for key in PRODUCT_PPT_FIELDS},
+    "title": "sv.title",
+    "source_description": "sv.description",
+    "source_uploader": "sv.uploader",
+    "source_webpage_url": "sv.webpage_url",
+    "source_tags_json": "CAST(sv.tags AS CHAR)",
+    "source_duration_seconds": "sv.duration",
+}
+TABLE_JOINS = {
+    "task_source": "LEFT JOIN task_source ts ON ts.task_id = t.id",
+    "task_options": "LEFT JOIN task_options opts ON opts.task_id = t.id",
+    "task_processing": "LEFT JOIN task_processing proc ON proc.task_id = t.id",
+    "task_metadata": "LEFT JOIN task_metadata meta ON meta.task_id = t.id",
+    "product_ppt": "LEFT JOIN product_ppt ppt ON ppt.task_id = t.id",
+    "submitter_video": "LEFT JOIN submitter_video sv ON sv.id = t.submitter_video_id",
 }
 MINIO_COVER_URL_COLUMNS = [
     "final_cover_url",
@@ -225,42 +258,40 @@ def update_existing_many(rows: Mapping[str, Mapping[str, Any]]) -> tuple[int, in
     return updated, skipped
 
 
-def get(task_id: str) -> dict[str, Any] | None:
+def _normalize_fields(fields: Iterable[str] | None) -> list[str]:
+    if fields is None:
+        return sorted(COLUMNS | set(SOURCE_METADATA_COLUMNS))
+    normalized = []
+    seen = set()
+    unknown = []
+    for field in fields:
+        key = str(field or "").strip()
+        if not key:
+            continue
+        if key not in FIELD_SELECTS:
+            unknown.append(key)
+            continue
+        if key not in seen:
+            normalized.append(key)
+            seen.add(key)
+    if unknown:
+        raise ValueError(f"unknown task_info field(s): {', '.join(sorted(unknown))}")
+    return normalized
+
+
+def get(task_id: str, fields: Iterable[str] | None = None) -> dict[str, Any] | None:
+    selected_fields = _normalize_fields(fields)
+    select_columns = ["t.id AS task_id"]
+    select_columns.extend(f"{FIELD_SELECTS[field]} AS {_quote_identifier(field)}" for field in selected_fields)
+    needed_tables = {FIELD_TABLES[field] for field in selected_fields}
+    joins = [TABLE_JOINS[name] for name in TABLE_JOINS if name in needed_tables]
     with _connect() as conn:
         cur = conn.cursor(dictionary=True)
         cur.execute(
-            """
-            SELECT t.id AS task_id,
-                   t.submitter_video_id, t.topic, t.task_type,
-                   ts.source_url, ts.source_language, ts.native_subtitle_language,
-                   ts.narration_input_mode, ts.metadata_url, ts.video_source_url,
-                   ts.audio_source_url, ts.source_thumbnail_url, ts.source_cover_url,
-                   ts.source_subtitles_url, ts.source_subtitle_srt_url,
-                   ts.source_subtitle_txt_url, ts.source_transcript_txt_url,
-                   ts.native_subtitle_txt_url, ts.native_subtitle_srt_url,
-                   opts.has_background_audio, opts.has_native_subtitle,
-                   opts.target_language, opts.need_dubbing, opts.need_subtitle,
-                   opts.need_separation, opts.upload_platforms,
-                   proc.audio_vocals_url, proc.audio_bgm_url, proc.audio_dubbing_url,
-                   proc.audio_mixed_url, proc.tts_segments_dir, proc.asr_json_path,
-                   proc.translation_json_path, proc.timings_json_path, proc.dialogue_srt_url,
-                   meta.upload_title, meta.upload_description, meta.upload_tags,
-                   meta.cover_text, meta.clean_cover_url, meta.final_cover_url,
-                   meta.horizontal_cover_url, meta.vertical_cover_url, meta.final_video_url,
-                   ppt.ppt_dialogue_json, ppt.ppt_dialogue_json_url, ppt.ppt_dialogue_audio_url,
-                   sv.title,
-                   sv.description AS source_description,
-                   sv.uploader AS source_uploader,
-                   sv.webpage_url AS source_webpage_url,
-                   CAST(sv.tags AS CHAR) AS source_tags_json,
-                   sv.duration AS source_duration_seconds
+            f"""
+            SELECT {', '.join(select_columns)}
             FROM task t
-            LEFT JOIN task_source ts ON ts.task_id = t.id
-            LEFT JOIN task_options opts ON opts.task_id = t.id
-            LEFT JOIN task_processing proc ON proc.task_id = t.id
-            LEFT JOIN task_metadata meta ON meta.task_id = t.id
-            LEFT JOIN product_ppt ppt ON ppt.task_id = t.id
-            LEFT JOIN submitter_video sv ON sv.id = t.submitter_video_id
+            {' '.join(joins)}
             WHERE t.id = %s
             """,
             (task_id,),
@@ -302,17 +333,17 @@ def count_url_references(url: str, *, excluding_task_id: str | None = None) -> i
         return int(_row_value(row) or 0)
 
 
-def merge_into(row: dict[str, Any] | None) -> dict[str, Any] | None:
+def merge_into(row: dict[str, Any] | None, fields: Iterable[str] | None = None) -> dict[str, Any] | None:
     if not row:
         return row
     task_id = str(row.get("task_id") or row.get("id") or "").strip()
     if not task_id:
         return row
-    info = get(task_id)
+    info = get(task_id, fields=fields)
     if not info:
         return row
     row["task_info"] = info
-    for key in COLUMNS | set(SOURCE_METADATA_COLUMNS):
+    for key in _normalize_fields(fields):
         value = info.get(key)
         if value is not None:
             row[key] = value
