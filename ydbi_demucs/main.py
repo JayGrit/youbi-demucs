@@ -66,9 +66,7 @@ def handle(row: dict) -> dict[str, str]:
         bgm_url,
     )
     return {
-        "audio_vocals_path": "",
         "audio_vocals_url": vocals_url,
-        "audio_bgm_path": "",
         "audio_bgm_url": bgm_url,
     }
 
