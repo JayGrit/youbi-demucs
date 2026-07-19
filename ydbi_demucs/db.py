@@ -6,7 +6,7 @@ from typing import Any
 
 import mysql.connector
 
-from . import video_info
+from . import task_info
 from .config import MYSQL_CONFIG
 from .service import FAILED, READY, RUNNING, SERVICE_NAME, SERVICE_TABLE, SUCCESS
 
@@ -167,11 +167,11 @@ def record_service_poll(stage_name: str) -> None:
 def get_task(task_id: str) -> dict[str, Any] | None:
     with connect() as conn:
         cur = _dict_cursor(conn)
-        cur.execute("SELECT task_id AS id FROM video_info WHERE task_id = %s", (task_id,))
+        cur.execute("SELECT task_id AS id FROM task_info WHERE task_id = %s", (task_id,))
         task = cur.fetchone()
         if not task:
             return None
-        task["video_info"] = video_info.get(task_id)
+        task["task_info"] = task_info.get(task_id)
         return task
 
 
@@ -208,7 +208,7 @@ def find_ready(stage_name: str) -> dict[str, Any] | None:
             """,
             (stage_name, READY),
         )
-        return video_info.merge_into(cur.fetchone())
+        return task_info.merge_into(cur.fetchone())
 
 
 def mark_running(stage_name: str, task_id: str) -> bool:
@@ -284,7 +284,7 @@ def mark_success(stage_name: str, task_id: str, outputs: Mapping[str, Any] | Non
 
     with connect() as conn:
         cur = conn.cursor()
-        video_info.upsert(task_id, fields, cur)
+        task_info.upsert(task_id, fields, cur)
         cur.execute(
             f"UPDATE {table} SET {', '.join(assignments)} WHERE task_id = %s AND stage_name = %s AND sub_stage = 'main'",
             values,
