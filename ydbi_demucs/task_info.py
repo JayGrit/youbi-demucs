@@ -63,8 +63,8 @@ TASK_METADATA_FIELDS = {
     "upload_tags",
     "cover_text",
     "final_cover_url",
-    "horizontal_cover_url",
-    "vertical_cover_url",
+    "cover_4_3",
+    "cover_3_4",
     "final_video_url",
 }
 PRODUCT_PPT_FIELDS = {
@@ -110,8 +110,8 @@ TABLE_JOINS = {
 }
 MINIO_COVER_URL_COLUMNS = [
     "final_cover_url",
-    "horizontal_cover_url",
-    "vertical_cover_url",
+    "cover_4_3",
+    "cover_3_4",
     "source_cover_url",
     "source_thumbnail_url",
 ]
@@ -303,8 +303,8 @@ def count_url_references(url: str, *, excluding_task_id: str | None = None) -> i
         cur = conn.cursor()
         predicates = [
             "meta.final_cover_url = %s",
-            "meta.horizontal_cover_url = %s",
-            "meta.vertical_cover_url = %s",
+            "meta.cover_4_3 = %s",
+            "meta.cover_3_4 = %s",
             "ts.source_cover_url = %s",
             "ts.source_thumbnail_url = %s",
         ]
