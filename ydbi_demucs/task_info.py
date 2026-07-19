@@ -62,7 +62,6 @@ TASK_METADATA_FIELDS = {
     "upload_description",
     "upload_tags",
     "cover_text",
-    "clean_cover_url",
     "final_cover_url",
     "horizontal_cover_url",
     "vertical_cover_url",
@@ -113,7 +112,6 @@ MINIO_COVER_URL_COLUMNS = [
     "final_cover_url",
     "horizontal_cover_url",
     "vertical_cover_url",
-    "clean_cover_url",
     "source_cover_url",
     "source_thumbnail_url",
 ]
@@ -307,7 +305,6 @@ def count_url_references(url: str, *, excluding_task_id: str | None = None) -> i
             "meta.final_cover_url = %s",
             "meta.horizontal_cover_url = %s",
             "meta.vertical_cover_url = %s",
-            "meta.clean_cover_url = %s",
             "ts.source_cover_url = %s",
             "ts.source_thumbnail_url = %s",
         ]
