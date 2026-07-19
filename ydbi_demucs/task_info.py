@@ -13,7 +13,6 @@ TASK_SOURCE_FIELDS = {
     "source_url",
     "source_language",
     "native_subtitle_language",
-    "narration_input_mode",
     "metadata_url",
     "video_source_url",
     "audio_source_url",
@@ -22,13 +21,24 @@ TASK_SOURCE_FIELDS = {
     "source_subtitles_url",
     "source_subtitle_srt_url",
     "source_subtitle_txt_url",
-    "source_transcript_txt_url",
     "native_subtitle_txt_url",
     "native_subtitle_srt_url",
+    "source_title",
+    "source_description",
+    "source_uploader",
+    "source_webpage_url",
+    "source_tags_json",
+    "source_duration_seconds",
 }
 TASK_OPTIONS_FIELDS = {
     "has_background_audio",
     "has_native_subtitle",
+    "has_manual_english_subtitle",
+    "has_manual_chinese_subtitle",
+    "has_other_manual_subtitle",
+    "has_auto_english_subtitle",
+    "has_auto_chinese_subtitle",
+    "has_other_auto_subtitle",
     "target_language",
     "need_dubbing",
     "need_subtitle",
@@ -45,6 +55,7 @@ TASK_PROCESSING_FIELDS = {
     "translation_json_path",
     "timings_json_path",
     "dialogue_srt_url",
+    "source_transcript_txt_url",
 }
 TASK_METADATA_FIELDS = {
     "upload_title",
@@ -62,14 +73,7 @@ PRODUCT_PPT_FIELDS = {
     "ppt_dialogue_json_url",
     "ppt_dialogue_audio_url",
 }
-SOURCE_METADATA_COLUMNS = (
-    "title",
-    "source_description",
-    "source_uploader",
-    "source_webpage_url",
-    "source_tags_json",
-    "source_duration_seconds",
-)
+SOURCE_METADATA_COLUMNS = {"title"}
 COLUMNS = {
     *TASK_FIELDS,
     *TASK_SOURCE_FIELDS,
@@ -85,7 +89,7 @@ FIELD_TABLES = {
     **{key: "task_processing" for key in TASK_PROCESSING_FIELDS},
     **{key: "task_metadata" for key in TASK_METADATA_FIELDS},
     **{key: "product_ppt" for key in PRODUCT_PPT_FIELDS},
-    **{key: "submitter_video" for key in SOURCE_METADATA_COLUMNS},
+    "title": "task_source",
 }
 FIELD_SELECTS = {
     "submitter_video_id": "t.submitter_video_id",
@@ -96,12 +100,7 @@ FIELD_SELECTS = {
     **{key: f"proc.{key}" for key in TASK_PROCESSING_FIELDS},
     **{key: f"meta.{key}" for key in TASK_METADATA_FIELDS},
     **{key: f"ppt.{key}" for key in PRODUCT_PPT_FIELDS},
-    "title": "sv.title",
-    "source_description": "sv.description",
-    "source_uploader": "sv.uploader",
-    "source_webpage_url": "sv.webpage_url",
-    "source_tags_json": "CAST(sv.tags AS CHAR)",
-    "source_duration_seconds": "sv.duration",
+    "title": "ts.source_title",
 }
 TABLE_JOINS = {
     "task_source": "LEFT JOIN task_source ts ON ts.task_id = t.id",
@@ -109,7 +108,6 @@ TABLE_JOINS = {
     "task_processing": "LEFT JOIN task_processing proc ON proc.task_id = t.id",
     "task_metadata": "LEFT JOIN task_metadata meta ON meta.task_id = t.id",
     "product_ppt": "LEFT JOIN product_ppt ppt ON ppt.task_id = t.id",
-    "submitter_video": "LEFT JOIN submitter_video sv ON sv.id = t.submitter_video_id",
 }
 MINIO_COVER_URL_COLUMNS = [
     "final_cover_url",
